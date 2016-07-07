@@ -1,7 +1,7 @@
 {
   "name": "json-schema-default-instance",
   "version": "1.0.0",
-  "description": "Creates an object as an instance of the given schema using its `default` properties.",
+  "description": "Creates an object as an instance of the given schema using its default properties.",
   "main": "index.js",
   "scripts": {
     "test": "mocha",

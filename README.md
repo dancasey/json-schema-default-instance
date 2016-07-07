@@ -6,7 +6,10 @@ Creates an object as an instance of the given schema using its `default` propert
 - Accepts multiple schemas, referenced by `id`.
 - Resolves `$ref` and `allOf`.
 
+
 ## Usage
+
+Install with `npm install --save json-schema-default-instance`
 
 See `test/test.js` for an example with `$ref` and `allOf`.
 
@@ -50,3 +53,8 @@ console.log(myDefaultInstance);
 ## Notes
 
 Relies heavily on `Ajv` for caching and lookup by ref, even though no validation is done here: [Ajv: Another JSON Schema Validator](https://github.com/epoberezkin/ajv)
+
+
+## License
+
+Public Domain
