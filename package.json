@@ -1,6 +1,6 @@
 {
   "name": "json-schema-default-instance",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Creates an object as an instance of the given schema using its default properties.",
   "main": "index.js",
   "scripts": {
@@ -8,7 +8,7 @@
     "prepublish": "tsc"
   },
   "author": "Dan Casey <dc181@icloud.com> (https://github.com/dancasey)",
-  "license": "Public Domain",
+  "license": "PDDL-1.0",
   "dependencies": {
     "ajv": "^4.1.3",
     "lodash": "^4.13.1"
