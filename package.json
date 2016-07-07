@@ -1,0 +1,33 @@
+{
+  "name": "json-schema-default-instance",
+  "version": "1.0.0",
+  "description": "Creates an object as an instance of the given schema using its `default` properties.",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha",
+    "prepublish": "tsc"
+  },
+  "author": "Dan Casey <dc181@icloud.com> (https://github.com/dancasey)",
+  "license": "Public Domain",
+  "dependencies": {
+    "ajv": "^4.1.3",
+    "lodash": "^4.13.1"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "mocha": "^2.5.3"
+  },
+  "typings": "dist/instantiator.d.ts",
+  "homepage": "https://github.com/dancasey/json-schema-default-instance#readme",
+  "bugs": {
+    "url": "https://github.com/dancasey/json-schema-default-instance/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dancasey/json-schema-default-instance.git"
+  },
+  "keywords": [
+    "schema",
+    "json"
+  ]
+}

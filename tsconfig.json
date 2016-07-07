@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es2015",
+    "noImplicitAny": false,
+    "sourceMap": true,
+    "outDir": "dist",
+    "declaration": true
+  },
+  "files": [
+    "src/instantiator.ts",
+    "typings/index.d.ts"
+  ]
+}
