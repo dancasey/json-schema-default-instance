@@ -15,7 +15,8 @@
   },
   "devDependencies": {
     "chai": "^3.5.0",
-    "mocha": "^2.5.3"
+    "mocha": "^2.5.3",
+    "typescript": "^1.8.10"
   },
   "typings": "dist/instantiator.d.ts",
   "homepage": "https://github.com/dancasey/json-schema-default-instance#readme",
