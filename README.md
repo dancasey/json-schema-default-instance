@@ -1,4 +1,6 @@
-# json-schema-default-instance [![Build Status](https://travis-ci.org/dancasey/json-schema-default-instance.svg?branch=master)](https://travis-ci.org/dancasey/json-schema-default-instance)
+# json-schema-default-instance
+
+[![Build Status](https://travis-ci.org/dancasey/json-schema-default-instance.svg?branch=master)](https://travis-ci.org/dancasey/json-schema-default-instance)
 
 Creates an object as an instance of the given schema using its `default` properties.
 

@@ -1,6 +1,6 @@
 {
   "name": "json-schema-default-instance",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Creates an object as an instance of the given schema using its default properties.",
   "main": "index.js",
   "scripts": {
