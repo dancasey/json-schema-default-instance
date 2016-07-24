@@ -1,6 +1,6 @@
 /* run with `npm test` */
-const {Instantiator} = require('../dist/instantiator');
-const {expect} = require('chai');
+import { Instantiator } from '../dist/instantiator';
+import { expect } from 'chai';
 
 const definitionSchema = {
   "$schema": "http://json-schema.org/draft-04/schema#",
@@ -33,13 +33,26 @@ const definitionSchema = {
         "minimum": 8,
         "maximum": 65535,
         "default": 8
+      },
+      "title": {
+        "$ref": "#/text",
+        "default": "No Name"
+      },
+      "desc": {
+        "$ref": "#/text"
       }
     },
     "required": [
       "version",
       "type",
-      "length"
+      "length",
+      "title",
+      "desc"
     ]
+  },
+  "text": {
+    "type": "string",
+    "default": ""
   }
 }
 
@@ -73,7 +86,7 @@ const messageSchema = {
 }
 
 const schemata = [definitionSchema, messageSchema]
-let ins = new Instantiator(schemata);
+const ins = new Instantiator(schemata);
 
 /** @test {Instantiator} */
 describe('Instantiator', function(){
@@ -86,8 +99,8 @@ describe('Instantiator', function(){
   /** @test {Instantiator#instantiate} */
   describe('instantiate', function(){
     it('Should correctly instantiate defaults', function(){
-      let myMessage = ins.instantiate('message.json');
-      expect(myMessage).to.deep.equal({ header: { version: 2, type: 0, length: 8 } });
+      const myMessage = ins.instantiate('message.json');
+      expect(myMessage).to.deep.equal({ header: { version: 2, type: 0, length: 8, title: 'No Name', desc: '' } });
     })
   })
 })

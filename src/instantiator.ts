@@ -2,7 +2,7 @@ import * as _ from 'lodash';
 import * as Ajv from 'ajv';
 
 let ajv = Ajv({verbose: true});
-const splitRef = /^(\w+.json)#?\/?(\w+)?/;
+const splitRef = /^(\w+.json)?#?\/?(\w+)?/;
 
 /**
  * Used to instantiate default objects from schemas.
@@ -22,29 +22,29 @@ export class Instantiator {
    */
   public instantiate(id: string): Object {
     const schema = ajv.getSchema(id).schema;
-    return this.recursiveInstantiate(schema);
+    return this.recursiveInstantiate(id, schema);
   }
 
-  private recursiveInstantiate(schema: Object): any {
+  private recursiveInstantiate(id: string, schema: Object): any {
     // if there's a `$ref`, `omit` ref part, resolve it, and merge into `withoutRef`
     if (_.has(schema, '$ref')) {
       let withoutRef = _.omit(schema, '$ref');
-      let [fullRef, jsonRef, idRef] = splitRef.exec(schema['$ref']);
+      let [fullRef, jsonRef=id, idRef] = splitRef.exec(schema['$ref']);
       let resolved = ajv.getSchema(jsonRef).schema[idRef];
-      let result = _.merge(withoutRef, resolved);
-      return this.recursiveInstantiate(result);
+      let result = _.merge({}, resolved, withoutRef);
+      return this.recursiveInstantiate(jsonRef, result);
     }
     // if there's `type`, switch on it
     else if (_.has(schema, 'type')) {
       switch (schema['type']) {
-        // if object, recurse into each `required` property
+        // if object, recurse into each property
         case 'object':
           let result = {}
-          if (_.has(schema, 'required')) {
-            let r = schema['required'];
+          if (_.has(schema, 'properties')) {
+            let r = Object.keys(schema['properties']);
             for (let i = 0; i < r.length; i++) {
               let property = r[i];
-              result[property] = this.recursiveInstantiate(schema['properties'][property]);
+              result[property] = this.recursiveInstantiate(id, schema['properties'][property]);
             }
           }
           return result;
@@ -63,7 +63,7 @@ export class Instantiator {
     // if there's `allOf`, `merge` each item in list into new object
     else if (_.has(schema, 'allOf')) {
       let allOfMerged = _.assign({}, ...schema['allOf']);
-      return this.recursiveInstantiate(allOfMerged);
+      return this.recursiveInstantiate(id, allOfMerged);
     }
   }
 }
