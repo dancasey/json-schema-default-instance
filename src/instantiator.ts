@@ -10,9 +10,10 @@ const splitRef = /^(\w+.json)?(?:#)?\/?(\w+)\/?(\w+)?/;
  * Used to instantiate default objects from schemas.
  *
  * @param {Object|Object[]} schemata  JSON Schema or array of schemas to load and cache
+ * @param {boolean} [onlyRequired=false] Whether to instantiate only those properties in the `required` array
  */
 export class Instantiator {
-  constructor(private schemata: Object | Object[]) {
+  constructor(private schemata: Object | Object[], public requiredOnly = false) {
     ajv.addSchema(schemata);
   }
 
@@ -59,8 +60,15 @@ export class Instantiator {
         // if object, recurse into each property
         case 'object':
           let result = {};
-          if (_.has(schema, 'properties')) {
-            let r = Object.keys(schema['properties']);
+          let r: string[];
+          if (this.requiredOnly && _.has(schema, 'required')) {
+            r = schema['required'];
+            for (let i = 0; i < r.length; i++) {
+              let property = r[i];
+              result[property] = this.recursiveInstantiate(id, schema['properties'][property]);
+            }
+          } else if (!this.requiredOnly && _.has(schema, 'properties')) {
+            r = Object.keys(schema['properties']);
             for (let i = 0; i < r.length; i++) {
               let property = r[i];
               result[property] = this.recursiveInstantiate(id, schema['properties'][property]);

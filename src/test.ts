@@ -45,9 +45,6 @@ const definitionSchema = {
     "required": [
       "version",
       "type",
-      "length",
-      "title",
-      "desc",
     ],
   },
   "text": {
@@ -128,4 +125,10 @@ test('Instantiate correctly instantiates defaults (externally-referenced schema)
 test('Instantiate correctly instantiates defaults (internally-referenced schema)', async (t) => {
   const intMessage = ins.instantiate('internalSchema');
   t.deepEqual(intMessage, { billing_address: defaultAddress, shipping_address: defaultAddress } as any);
+});
+
+test('Instantiate correctly instantiates defaults (externally-referenced schema, required only)', async (t) => {
+  ins.requiredOnly = true;
+  const extReqMessage = ins.instantiate('message.json');
+  t.deepEqual(extReqMessage, { header: { version: 2, type: 0} } as any);
 });

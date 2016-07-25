@@ -4,9 +4,10 @@
 
 Creates an object as an instance of the given schema using its `default` properties.
 
-- Ignores properties that are not listed in the `required` array.
 - Accepts multiple schemas, referenced by `id`.
 - Resolves `$ref` and `allOf`.
+- Will instantiate all properties with a given `default`, unless
+- If `requiredOnly = true`, ignores properties that are not listed in the `required` array (see example below).
 
 
 ## Usage
@@ -37,18 +38,28 @@ const mySchemas = [
         "type": "string",
         "default": "Bar"
       },
-      "IgnoredProperty": {
+      "optionalProperty": {
         "type": "string",
         "default": "Hello"
       }
     }
   }
 ]
+
+/* Instantiate with all properties */
 let ins = new Instantiator(mySchemas);
 let myDefaultInstance = ins.instantiate('theSchemaId');
 console.log(myDefaultInstance);
 
+// => { firstName: 'Foo', lastName: 'Bar', optionalProperty: 'Hello' }
+
+/* This time, only with `required` properties */
+ins.requiredOnly = true;
+let myRequiredInstance = ins.instantiate('theSchemaId');
+console.log(myRequiredInstance);
+
 // => { firstName: 'Foo', lastName: 'Bar' }
+
 ```
 
 
