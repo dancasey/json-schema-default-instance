@@ -2,7 +2,9 @@ import * as _ from 'lodash';
 import * as Ajv from 'ajv';
 
 let ajv = Ajv({verbose: true});
-const splitRef = /^(\w+.json)?#?\/?(\w+)?/;
+
+/** Split a `$ref` into its relevant parts */
+const splitRef = /^(\w+.json)?(?:#)?\/?(\w+)\/?(\w+)?/;
 
 /**
  * Used to instantiate default objects from schemas.
@@ -22,6 +24,9 @@ export class Instantiator {
    */
   public instantiate(id: string): Object {
     const schema = ajv.getSchema(id).schema;
+    if (!schema) {
+      return {};
+    }
     return this.recursiveInstantiate(id, schema);
   }
 
@@ -29,17 +34,31 @@ export class Instantiator {
     // if there's a `$ref`, `omit` ref part, resolve it, and merge into `withoutRef`
     if (_.has(schema, '$ref')) {
       let withoutRef = _.omit(schema, '$ref');
-      let [fullRef, jsonRef=id, idRef] = splitRef.exec(schema['$ref']);
-      let resolved = ajv.getSchema(jsonRef).schema[idRef];
+      // let [fullRef, first, second, third] = splitRef.exec(schema['$ref']);
+      let refs = splitRef.exec(schema['$ref']);
+      if (!refs) { return; }
+      // tslint:disable-next-line:no-unused-variable
+      let [fullRef, jsonRef = id, first, second] = refs;
+      // resolve up to three levels, e.g. `definitions.json#/section/item`, or `#/section/item`, or just `item`
+      let validateFunction = ajv.getSchema(jsonRef);
+      if (!validateFunction) { return; }
+      let resolved = validateFunction.schema;
+      if (first && resolved) {
+        resolved = resolved[first];
+        if (second && resolved) {
+          resolved = resolved[second];
+        }
+      }
       let result = _.merge({}, resolved, withoutRef);
       return this.recursiveInstantiate(jsonRef, result);
     }
+
     // if there's `type`, switch on it
-    else if (_.has(schema, 'type')) {
+    if (_.has(schema, 'type')) {
       switch (schema['type']) {
         // if object, recurse into each property
         case 'object':
-          let result = {}
+          let result = {};
           if (_.has(schema, 'properties')) {
             let r = Object.keys(schema['properties']);
             for (let i = 0; i < r.length; i++) {
@@ -54,17 +73,18 @@ export class Instantiator {
         case 'string':
           if (_.has(schema, 'default')) {
             return schema['default'];
+          } else {
+            return null;
           }
-          else return null;
         default:
           return null;
       }
     }
+
     // if there's `allOf`, `merge` each item in list into new object
-    else if (_.has(schema, 'allOf')) {
+    if (_.has(schema, 'allOf')) {
       let allOfMerged = _.assign({}, ...schema['allOf']);
       return this.recursiveInstantiate(id, allOfMerged);
     }
   }
 }
-
