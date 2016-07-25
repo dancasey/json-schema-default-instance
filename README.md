@@ -54,7 +54,14 @@ console.log(myDefaultInstance);
 
 ## Notes
 
-Relies heavily on `Ajv` for caching and lookup by ref, even though no validation is done here: [Ajv: Another JSON Schema Validator](https://github.com/epoberezkin/ajv)
+Relies heavily on `Ajv` for caching and lookup by ref, even though no validation is done here.
+[Ajv: Another JSON Schema Validator](https://github.com/epoberezkin/ajv)
+
+`Ajv` *does* have its own `useDefaults` option which can be used instead of this package,
+but it does not support `default` keywords in subschemas or `allOf`.
+If you don't need `allOf`, just use `Ajv` directly (see [Ajv assigning-defaults](https://github.com/epoberezkin/ajv#assigning-defaults) and related [discussion](https://github.com/epoberezkin/ajv/issues/42)).
+
+Need help understanding JSON Schema? I would recommend the Space Telescope Science Institute's [Understanding JSON Schema](https://spacetelescope.github.io/understanding-json-schema/index.html)
 
 
 ## License

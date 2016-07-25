@@ -9,6 +9,9 @@
     "prepublish": "npm run build"
   },
   "author": "Dan Casey <dc181@icloud.com> (https://github.com/dancasey)",
+  "contributors": [
+    "Alexander <alexkuz@gmail.com> (http://kuzya.org/)"
+  ],
   "license": "PDDL-1.0",
   "dependencies": {
     "ajv": "^4.2.0",
@@ -36,6 +39,13 @@
     "files": [
       "dist/test.js"
     ],
+    "require": ["babel-register"],
     "verbose": true
+  },
+  "babel": {
+    "presets": ["es2015"]
+  },
+  "engines": {
+    "node" : ">=4"
   }
 }
