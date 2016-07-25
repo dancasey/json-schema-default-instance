@@ -5,10 +5,12 @@
     "noImplicitAny": false,
     "sourceMap": true,
     "outDir": "dist",
-    "declaration": true
+    "declaration": true,
+    "strictNullChecks": true
   },
   "files": [
     "src/instantiator.ts",
+    "src/test.ts",
     "typings/index.d.ts"
   ]
 }

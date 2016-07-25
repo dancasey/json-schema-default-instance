@@ -1,27 +1,22 @@
 {
   "name": "json-schema-default-instance",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "description": "Creates an object as an instance of the given schema using its default properties.",
   "main": "index.js",
   "scripts": {
     "build": "typings install && tsc",
-    "test": "npm run build && mocha --compilers js:babel-register",
+    "test": "npm run build && ava",
     "prepublish": "npm run build"
   },
   "author": "Dan Casey <dc181@icloud.com> (https://github.com/dancasey)",
   "license": "PDDL-1.0",
   "dependencies": {
-    "ajv": "^4.1.3",
+    "ajv": "^4.2.0",
     "lodash": "^4.13.1"
   },
   "devDependencies": {
-    "babel-eslint": "^6.1.2",
-    "babel-preset-es2015": "^6.9.0",
-    "babel-register": "^6.11.5",
-    "chai": "^3.5.0",
-    "eslint": "^3.1.1",
-    "mocha": "^2.5.3",
-    "typescript": "^1.8.10",
+    "ava": "^0.15.2",
+    "typescript": "^2.0.0",
     "typings": "^1.3.2"
   },
   "typings": "dist/instantiator.d.ts",
@@ -36,5 +31,11 @@
   "keywords": [
     "schema",
     "json"
-  ]
+  ],
+  "ava": {
+    "files": [
+      "dist/test.js"
+    ],
+    "verbose": true
+  }
 }
