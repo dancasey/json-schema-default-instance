@@ -41,6 +41,12 @@ const definitionSchema = {
       desc: {
         $ref: '#/text',
       },
+      obj: {
+        type: 'object',
+        default: {
+          objProp: 'text',
+        },
+      },
     },
     required: [
       'version',
@@ -82,6 +88,36 @@ const messageSchema = {
   },
 };
 
+const defaultRefSchema = {
+  $schema: 'http://json-schema.org/draft-04/schema#',
+  id: 'defaultRef.json',
+  type: 'object',
+  required: ['prop'],
+  properties: {
+    prop: {
+      type: 'object',
+      default: {
+        $ref: '#/definitions/prop',
+        innerProp2: {
+          $ref: '#/definitions/innerProp',
+        },
+      },
+    },
+  },
+  definitions: {
+    prop: {
+      type: 'object',
+      default: {
+        innerProp1: 'text',
+      },
+    },
+    innerProp: {
+      type: 'string',
+      default: 'text',
+    },
+  },
+};
+
 // example from https://spacetelescope.github.io/understanding-json-schema/structuring.html
 const internalSchema = {
   $schema: 'http://json-schema.org/draft-04/schema#',
@@ -110,7 +146,7 @@ const defaultAddress = {
   state: 'NY',
 };
 
-let schemata = [definitionSchema, messageSchema, internalSchema];
+let schemata = [definitionSchema, messageSchema, internalSchema, defaultRefSchema];
 let ins = new Instantiator(schemata);
 
 test('Constructor returns a new instance', t => {
@@ -119,7 +155,9 @@ test('Constructor returns a new instance', t => {
 
 test('Instantiate correctly instantiates defaults (externally-referenced schema)', t => {
   const extMessage = ins.instantiate('message.json');
-  t.deepEqual(extMessage, { header: { version: 2, type: 0, length: 8, title: 'No Name', desc: '' } } as any);
+  t.deepEqual(extMessage, {
+    header: { version: 2, type: 0, length: 8, title: 'No Name', desc: '', obj: { objProp: 'text' } },
+  } as any);
 });
 
 test('Instantiate correctly instantiates defaults (internally-referenced schema)', t => {
@@ -131,4 +169,14 @@ test('Instantiate correctly instantiates defaults (externally-referenced schema,
   ins.requiredOnly = true;
   const extReqMessage = ins.instantiate('message.json');
   t.deepEqual(extReqMessage, { header: { version: 2, type: 0} } as any);
+});
+
+test('Instantiate resolves refs in default', t => {
+  ins.resolveDefaultRefs = false;
+  let defaultRef = ins.instantiate('defaultRef.json');
+  t.deepEqual(defaultRef, { prop: defaultRefSchema.properties.prop.default } as any);
+
+  ins.resolveDefaultRefs = true;
+  defaultRef = ins.instantiate('defaultRef.json');
+  t.deepEqual(defaultRef, { prop: { innerProp1: 'text', innerProp2: 'text' } } as any);
 });
