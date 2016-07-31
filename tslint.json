@@ -2,9 +2,11 @@
   "extends": "tslint:recommended",
   "rules": {
     "quotemark": [
+      true,
       "single"
     ],
     "no-string-literal": false,
-    "object-literal-sort-keys": false
+    "object-literal-sort-keys": false,
+    "object-literal-key-quotes": [true, "as-needed"]
   }
 }
