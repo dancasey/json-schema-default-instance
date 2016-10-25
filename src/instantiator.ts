@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
 import * as Ajv from 'ajv';
+import {resolve} from 'url';
 
 let ajv = Ajv({verbose: true});
 
@@ -41,6 +42,7 @@ export class Instantiator {
       // tslint:disable-next-line:no-unused-variable
       let [fullRef, jsonRef = id, first, second] = refs;
       // resolve up to three levels, e.g. `definitions.json#/section/item`, or `#/section/item`, or just `item`
+      jsonRef = resolve(id, jsonRef);
       let validateFunction = ajv.getSchema(jsonRef);
       if (!validateFunction) { return; }
       let resolved = validateFunction.schema;
