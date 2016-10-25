@@ -10,7 +10,6 @@
   },
   "files": [
     "src/instantiator.ts",
-    "src/test.ts",
-    "typings/index.d.ts"
+    "src/test.ts"
   ]
 }
