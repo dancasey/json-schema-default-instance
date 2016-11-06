@@ -1,79 +1,85 @@
 /* run with `npm test` */
 import {Instantiator} from './instantiator';
-import test from "ava";
+import test from 'ava';
 
 const definitionSchema = {
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "description": "Definitions",
-  "id": "definitions.json",
-  "data": {
-    "description": "Arbitrary data as hex string",
-    "type": "string",
-    "pattern": "^([a-fA-F0-9]{2})+$",
+  $schema: 'http://json-schema.org/draft-04/schema#',
+  description: 'Definitions',
+  id: 'definitions.json',
+  data: {
+    description: 'Arbitrary data as hex string',
+    type: 'string',
+    pattern: '^([a-fA-F0-9]{2})+$',
   },
-  "header": {
-    "description": "Header",
-    "type": "object",
-    "properties": {
-      "version": {
-        "type": "integer",
-        "minimum": 1,
-        "maximum": 255,
-        "default": 2,
+  header: {
+    description: 'Header',
+    type: 'object',
+    properties: {
+      version: {
+        type: 'integer',
+        minimum: 1,
+        maximum: 255,
+        default: 2,
       },
-      "type": {
-        "description": "Index",
-        "type": "integer",
-        "minimum": 0,
-        "maximum": 20,
+      type: {
+        description: 'Index',
+        type: 'integer',
+        minimum: 0,
+        maximum: 20,
       },
-      "length": {
-        "description": "Length in bytes",
-        "type": "integer",
-        "minimum": 8,
-        "maximum": 65535,
-        "default": 8,
+      length: {
+        description: 'Length in bytes',
+        type: 'integer',
+        minimum: 8,
+        maximum: 65535,
+        default: 8,
       },
-      "title": {
-        "$ref": "#/text",
-        "default": "No Name",
+      title: {
+        $ref: '#/text',
+        default: 'No Name',
       },
-      "desc": {
-        "$ref": "#/text",
+      desc: {
+        $ref: '#/text',
+      },
+      obj: {
+        type: 'object',
+        default: {
+          objProp: 'text',
+        },
       },
     },
-    "required": [
-      "version",
-      "type",
+    required: [
+      'version',
+      'type',
     ],
   },
-  "text": {
-    "type": "string",
-    "default": "",
+  text: {
+    type: 'string',
+    default: '',
   },
 };
 
 const messageSchema = {
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "description": "Message",
-  "id": "message.json",
-  "type": "object",
-  "required": [
-    "header",
+  $schema: 'http://json-schema.org/draft-04/schema#',
+  description: 'Message',
+  id: 'message.json',
+  type: 'object',
+  required: [
+    'header',
   ],
-  "properties": {
-    "header": {
-      "allOf": [
+  properties: {
+    header: {
+      allOf: [
         {
-          "$ref": "definitions.json#/header",
+          $ref: 'definitions.json#/header',
         },
         {
-          "properties": {
-            "type": {
-              "enum": [
+          properties: {
+            type: {
+              enum: [
                 0,
               ],
-              "default": 0,
+              default: 0,
             },
           },
         },
@@ -82,53 +88,95 @@ const messageSchema = {
   },
 };
 
-// example from https://spacetelescope.github.io/understanding-json-schema/structuring.html
-const internalSchema = {
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "id": "internalSchema",
-  "definitions": {
-    "address": {
-      "type": "object",
-      "properties": {
-        "street_address": { "type": "string", "default": "100 Main Street" },
-        "city": { "type": "string", "default": "New York" },
-        "state": { "type": "string", "default": "NY" },
+const defaultRefSchema = {
+  $schema: 'http://json-schema.org/draft-04/schema#',
+  id: 'defaultRef.json',
+  type: 'object',
+  required: ['prop'],
+  properties: {
+    prop: {
+      type: 'object',
+      default: {
+        $ref: '#/definitions/prop',
+        innerProp2: {
+          $ref: '#/definitions/innerProp',
+        },
       },
-      "required": ["street_address", "city", "state"],
     },
   },
-  "type": "object",
-  "properties": {
-    "billing_address": { "$ref": "#/definitions/address" },
-    "shipping_address": { "$ref": "#/definitions/address" },
+  definitions: {
+    prop: {
+      type: 'object',
+      default: {
+        innerProp1: 'text',
+      },
+    },
+    innerProp: {
+      type: 'string',
+      default: 'text',
+    },
+  },
+};
+
+// example from https://spacetelescope.github.io/understanding-json-schema/structuring.html
+const internalSchema = {
+  $schema: 'http://json-schema.org/draft-04/schema#',
+  id: 'internalSchema',
+  definitions: {
+    address: {
+      type: 'object',
+      properties: {
+        street_address: { type: 'string', default: '100 Main Street' },
+        city: { type: 'string', default: 'New York' },
+        state: { type: 'string', default: 'NY' },
+      },
+      required: ['street_address', 'city', 'state'],
+    },
+  },
+  type: 'object',
+  properties: {
+    billing_address: { $ref: '#/definitions/address' },
+    shipping_address: { $ref: '#/definitions/address' },
   },
 };
 
 const defaultAddress = {
-  street_address: "100 Main Street",
-  city: "New York",
-  state: "NY",
+  street_address: '100 Main Street',
+  city: 'New York',
+  state: 'NY',
 };
 
-let schemata = [definitionSchema, messageSchema, internalSchema];
+let schemata = [definitionSchema, messageSchema, internalSchema, defaultRefSchema];
 let ins = new Instantiator(schemata);
 
-test('Constructor returns a new instance', async (t) => {
+test('Constructor returns a new instance', t => {
   t.truthy(ins instanceof Instantiator);
 });
 
-test('Instantiate correctly instantiates defaults (externally-referenced schema)', async (t) => {
+test('Instantiate correctly instantiates defaults (externally-referenced schema)', t => {
   const extMessage = ins.instantiate('message.json');
-  t.deepEqual(extMessage, { header: { version: 2, type: 0, length: 8, title: 'No Name', desc: '' } } as any);
+  t.deepEqual(extMessage, {
+    header: { version: 2, type: 0, length: 8, title: 'No Name', desc: '', obj: { objProp: 'text' } },
+  } as any);
 });
 
-test('Instantiate correctly instantiates defaults (internally-referenced schema)', async (t) => {
+test('Instantiate correctly instantiates defaults (internally-referenced schema)', t => {
   const intMessage = ins.instantiate('internalSchema');
   t.deepEqual(intMessage, { billing_address: defaultAddress, shipping_address: defaultAddress } as any);
 });
 
-test('Instantiate correctly instantiates defaults (externally-referenced schema, required only)', async (t) => {
+test('Instantiate correctly instantiates defaults (externally-referenced schema, required only)', t => {
   ins.requiredOnly = true;
   const extReqMessage = ins.instantiate('message.json');
   t.deepEqual(extReqMessage, { header: { version: 2, type: 0} } as any);
+});
+
+test('Instantiate resolves refs in default', t => {
+  ins.resolveDefaultRefs = false;
+  let defaultRef = ins.instantiate('defaultRef.json');
+  t.deepEqual(defaultRef, { prop: defaultRefSchema.properties.prop.default } as any);
+
+  ins.resolveDefaultRefs = true;
+  defaultRef = ins.instantiate('defaultRef.json');
+  t.deepEqual(defaultRef, { prop: { innerProp1: 'text', innerProp2: 'text' } } as any);
 });
