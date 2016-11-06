@@ -14,12 +14,12 @@
   ],
   "license": "PDDL-1.0",
   "dependencies": {
-    "@types/lodash": "^4.14.37",
-    "@types/node": "^6.0.45",
     "ajv": "^4.2.0",
     "lodash": "^4.13.1"
   },
   "devDependencies": {
+    "@types/lodash": "^4.14.37",
+    "@types/node": "^6.0.45",
     "ava": "^0.16.0",
     "tslint": "^3.14.0",
     "typescript": "^2.0.0"
