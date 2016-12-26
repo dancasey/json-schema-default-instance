@@ -1,6 +1,9 @@
 /* run with `npm test` */
-import {Instantiator} from './instantiator';
+import instantiate from './instantiator';
 import test from 'ava';
+import * as Ajv from 'ajv';
+
+const ajv = Ajv({ verbose: true });
 
 const definitionSchema = {
   $schema: 'http://json-schema.org/draft-04/schema#',
@@ -35,7 +38,9 @@ const definitionSchema = {
         default: 8,
       },
       title: {
-        $ref: '#/text',
+        allOf: [{
+          $ref: '#/text'
+        }],
         default: 'No Name',
       },
       desc: {
@@ -138,6 +143,7 @@ const internalSchema = {
     billing_address: { $ref: '#/definitions/address' },
     shipping_address: { $ref: '#/definitions/address' },
   },
+  required: ['billing_address', 'shipping_address']
 };
 
 const defaultAddress = {
@@ -146,37 +152,120 @@ const defaultAddress = {
   state: 'NY',
 };
 
-let schemata = [definitionSchema, messageSchema, internalSchema, defaultRefSchema];
-let ins = new Instantiator(schemata);
+ajv.addSchema([definitionSchema, messageSchema, internalSchema, defaultRefSchema]);
+let ins = instantiate({ ajv });
 
-test('Constructor returns a new instance', t => {
-  t.truthy(ins instanceof Instantiator);
+test('Object defaults resolve correctly', t => {
+  ajv.addSchema({
+    id: 'object-defaults.json',
+    type: 'object',
+    properties: {
+      prop: {
+        type: 'integer'
+      }
+    },
+    default: {
+      prop: 1
+    }
+  });
+
+  t.deepEqual(ins('object-defaults.json'), { prop: 1 } as any);
+});
+
+test('Object property defaults resolve correctly', t => {
+  ajv.addSchema({
+    id: 'object-prop-defaults.json',
+    type: 'object',
+    properties: {
+      prop: {
+        type: 'integer',
+        default: 1
+      }
+    }
+  });
+
+  t.deepEqual(ins('object-prop-defaults.json'), { prop: 1 } as any);
+});
+
+test('Non-required external defaults resolve correctly', t => {
+  ajv.addSchema({
+    id: 'non-req-ext-defaults.json',
+    type: 'object',
+    properties: {
+      prop: {
+        $ref: '#/definitions/prop'
+      }
+    },
+    definitions: {
+      prop: {
+        type: 'integer',
+        default: 1
+      }
+    }
+  });
+
+  t.deepEqual(ins('non-req-ext-defaults.json'), { } as any);
+});
+
+test('Required external defaults resolve correctly', t => {
+  ajv.addSchema({
+    id: 'req-ext-defaults.json',
+    type: 'object',
+    properties: {
+      prop: {
+        $ref: '#/definitions/prop'
+      }
+    },
+    required: ['prop'],
+    definitions: {
+      prop: {
+        type: 'integer',
+        default: 1
+      }
+    }
+  });
+
+  t.deepEqual(ins('req-ext-defaults.json'), { prop: 1 } as any);
+});
+
+test('Object default overrides property defaults', t => {
+  ajv.addSchema({
+    id: 'override-defaults.json',
+    type: 'object',
+    properties: {
+      prop1: {
+        type: 'integer',
+        default: 11
+      },
+      prop2: {
+        type: 'integer',
+        default: 111
+      }
+    },
+    default: {
+      prop1: 1
+    }
+  });
+
+  t.deepEqual(ins('override-defaults.json'), { prop1: 1 } as any);
 });
 
 test('Instantiate correctly instantiates defaults (externally-referenced schema)', t => {
-  const extMessage = ins.instantiate('message.json');
+  const extMessage = ins('message.json');
   t.deepEqual(extMessage, {
-    header: { version: 2, type: 0, length: 8, title: 'No Name', desc: '', obj: { objProp: 'text' } },
+    header: { version: 2, type: 0, length: 8, title: 'No Name', obj: { objProp: 'text' } },
   } as any);
 });
 
 test('Instantiate correctly instantiates defaults (internally-referenced schema)', t => {
-  const intMessage = ins.instantiate('internalSchema');
+  const intMessage = ins('internalSchema');
   t.deepEqual(intMessage, { billing_address: defaultAddress, shipping_address: defaultAddress } as any);
 });
 
-test('Instantiate correctly instantiates defaults (externally-referenced schema, required only)', t => {
-  ins.requiredOnly = true;
-  const extReqMessage = ins.instantiate('message.json');
-  t.deepEqual(extReqMessage, { header: { version: 2, type: 0} } as any);
-});
-
 test('Instantiate resolves refs in default', t => {
-  ins.resolveDefaultRefs = false;
-  let defaultRef = ins.instantiate('defaultRef.json');
+  let defaultRef = instantiate({ ajv, resolveDefaultRefs: false }, 'defaultRef.json');
   t.deepEqual(defaultRef, { prop: defaultRefSchema.properties.prop.default } as any);
 
-  ins.resolveDefaultRefs = true;
-  defaultRef = ins.instantiate('defaultRef.json');
+  defaultRef = instantiate({ ajv, resolveDefaultRefs: true }, 'defaultRef.json');
   t.deepEqual(defaultRef, { prop: { innerProp1: 'text', innerProp2: 'text' } } as any);
 });
