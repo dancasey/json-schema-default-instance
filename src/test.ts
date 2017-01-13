@@ -1,5 +1,5 @@
 /* run with `npm test` */
-import instantiate from './instantiator';
+import instantiate, { normalizeSchemaRef } from './instantiator';
 import test from 'ava';
 import * as Ajv from 'ajv';
 
@@ -62,7 +62,82 @@ const definitionSchema = {
     type: 'string',
     default: '',
   },
+  someObj: {
+    type: 'object',
+    properties: {
+      someProp: {
+        type: 'string',
+        default: 'someProp'
+      },
+      otherProp: {
+        $ref: '#/otherProp'
+      }
+    },
+    required: ['someProp', 'otherProp']
+  },
+  otherProp: {
+    type: 'string',
+    default: 'otherProp'
+  },
+  deepSchema: {
+    one: {
+      two: {
+        three: {
+          four: {
+            five: {
+              six: {
+                seven: {
+                  eight: {
+                    nine: {
+                      ten: {
+                        type: 'string',
+                        default: 'deepValue'
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 };
+
+const externalSchema = {
+  $schema: 'http://json-schema.org/draft-04/schema#',
+  id: 'externalSchema.json',
+  external: {
+    $ref: 'definitions.json#/someObj'
+  },
+  deepSchema: {
+    $ref: 'definitions.json#/deepSchema'
+  }  
+};
+
+const allOfSchema = {
+  $schema: 'http://json-schema.org/draft-04/schema#',
+  id: 'allOfSchema.json',
+  allOf: [{
+    $ref: '#/definitions/innerObj'
+  }, {
+    description: 'unknown schema, to be ignored'
+  }, {
+    $ref: 'definitions.json#/someObj'
+  }],
+  definitions: {
+    innerObj: {
+      type: 'object',
+      properties: {
+        innerProp: {
+          type: 'string',
+          default: 'innerProp'
+        }
+      }
+    }
+  }
+}
 
 const messageSchema = {
   $schema: 'http://json-schema.org/draft-04/schema#',
@@ -79,6 +154,7 @@ const messageSchema = {
           $ref: 'definitions.json#/header',
         },
         {
+          type: 'object',
           properties: {
             type: {
               enum: [
@@ -146,14 +222,131 @@ const internalSchema = {
   required: ['billing_address', 'shipping_address']
 };
 
+const resolveRefSchema = {
+  id: 'resolveRefSchema.json',
+  definitions: {
+    first: {
+      $ref: '#/definitions/second'
+    },
+    second: {
+      title: 'second'
+    }
+  }
+}
+
+const invalidResolveRefSchema = {
+  id: 'invalidResolveRefSchema.json',
+  $ref: '#/definitions/first',
+  definitions: {
+    first: {
+      $ref: '#/definitions/second'
+    },
+    second: {
+      title: 'second'
+    }
+  }
+}
+
+const literalValueSchema = {
+  id: 'literalValueSchema.json',
+  type: 'object',
+  properties: {
+    array: { type: 'array' },
+    minItemsArray: { type: 'array', minItems: 2, items: { type: 'string' } },
+    boolean: { type: 'boolean' },
+    number: { type: 'number' },
+    integer: { type: 'integer' },
+    string: { type: 'string' },
+    null: { type: 'null' }
+  },
+  required: ['array', 'minItemsArray', 'boolean', 'number', 'integer', 'string', 'null']
+}
+
 const defaultAddress = {
   street_address: '100 Main Street',
   city: 'New York',
   state: 'NY',
 };
 
-ajv.addSchema([definitionSchema, messageSchema, internalSchema, defaultRefSchema]);
+ajv.addSchema([
+  definitionSchema,
+  messageSchema,
+  internalSchema,
+  defaultRefSchema,
+  allOfSchema,
+  externalSchema,
+  resolveRefSchema,
+  invalidResolveRefSchema,
+  literalValueSchema
+]);
+
 let ins = instantiate({ ajv });
+
+test('Should normalize schema ref', t => {
+  t.is(
+    normalizeSchemaRef('resolveRefSchema.json#/definitions/first', { ajv }),
+    'resolveRefSchema.json#/definitions/second'
+  );
+
+  t.is(
+    normalizeSchemaRef('invalidResolveRefSchema.json#/definitions/first', { ajv }),
+    'invalidResolveRefSchema.json#/definitions/second'
+  );
+});
+
+test('Should return default literal value', t => {
+  t.deepEqual(ins('literalValueSchema.json').result, {
+    array: [],
+    minItemsArray: ['', ''],
+    boolean: false,
+    number: 0,
+    integer: 0,
+    string: '',
+    null: null
+  });
+});
+
+test('Should return no result for unknown schema', t => {
+  t.is(ins('unknown-schema.json').hasResult, false);
+});
+
+test('Correctly resolves external ref', t => {
+  t.deepEqual(
+    ins('externalSchema.json#/external').result,
+    { someProp: 'someProp', otherProp: 'otherProp' } as any
+  );
+
+  t.is(
+    ins('externalSchema.json#/external/properties/someProp').result,
+    'someProp'
+  );
+});
+
+test('Resolve deep schema', t => {
+  t.is(ins('definitions.json#/deepSchema/one/two/three/four/five/six/seven/eight/nine/ten').result, 'deepValue');
+});
+
+test('Resolve external deep schema', t => {
+  t.is(ins('externalSchema.json#/deepSchema/one/two/three/four/five/six/seven/eight/nine/ten').result, 'deepValue');
+});
+
+test('Resolve first enum value as default', t => {
+  ajv.addSchema({
+    id: 'enumSchema.json',
+    enum: ['one', 'two', 'three']
+  });
+
+  t.is(ins('enumSchema.json').result, 'one');
+});
+
+test('Resolve const value as default', t => {
+  ajv.addSchema({
+    id: 'constSchema.json',
+    const: 'constValue'
+  });
+
+  t.is(ins('constSchema.json').result, 'constValue');
+});
 
 test('Object defaults resolve correctly', t => {
   ajv.addSchema({
@@ -169,7 +362,7 @@ test('Object defaults resolve correctly', t => {
     }
   });
 
-  t.deepEqual(ins('object-defaults.json'), { prop: 1 } as any);
+  t.deepEqual(ins('object-defaults.json').result, { prop: 1 } as any);
 });
 
 test('Object property defaults resolve correctly', t => {
@@ -184,7 +377,7 @@ test('Object property defaults resolve correctly', t => {
     }
   });
 
-  t.deepEqual(ins('object-prop-defaults.json'), { prop: 1 } as any);
+  t.deepEqual(ins('object-prop-defaults.json').result, { prop: 1 } as any);
 });
 
 test('Non-required external defaults resolve correctly', t => {
@@ -204,7 +397,7 @@ test('Non-required external defaults resolve correctly', t => {
     }
   });
 
-  t.deepEqual(ins('non-req-ext-defaults.json'), { } as any);
+  t.deepEqual(ins('non-req-ext-defaults.json').result, { } as any);
 });
 
 test('Required external defaults resolve correctly', t => {
@@ -225,7 +418,7 @@ test('Required external defaults resolve correctly', t => {
     }
   });
 
-  t.deepEqual(ins('req-ext-defaults.json'), { prop: 1 } as any);
+  t.deepEqual(ins('req-ext-defaults.json').result, { prop: 1 } as any);
 });
 
 test('Object default overrides property defaults', t => {
@@ -247,25 +440,35 @@ test('Object default overrides property defaults', t => {
     }
   });
 
-  t.deepEqual(ins('override-defaults.json'), { prop1: 1 } as any);
+  t.deepEqual(ins('override-defaults.json').result, { prop1: 1 } as any);
 });
 
 test('Instantiate correctly instantiates defaults (externally-referenced schema)', t => {
-  const extMessage = ins('message.json');
-  t.deepEqual(extMessage, {
+  const { result } = ins('message.json');
+  t.deepEqual(result, {
     header: { version: 2, type: 0, length: 8, title: 'No Name', obj: { objProp: 'text' } },
   } as any);
 });
 
 test('Instantiate correctly instantiates defaults (internally-referenced schema)', t => {
-  const intMessage = ins('internalSchema');
-  t.deepEqual(intMessage, { billing_address: defaultAddress, shipping_address: defaultAddress } as any);
+  const { result } = ins('internalSchema');
+  t.deepEqual(result, { billing_address: defaultAddress, shipping_address: defaultAddress } as any);
 });
 
 test('Instantiate resolves refs in default', t => {
-  let defaultRef = instantiate({ ajv, resolveDefaultRefs: false }, 'defaultRef.json');
+  let defaultRef = instantiate({ ajv, resolveDefaultRefs: false }, 'defaultRef.json').result;
   t.deepEqual(defaultRef, { prop: defaultRefSchema.properties.prop.default } as any);
 
-  defaultRef = instantiate({ ajv, resolveDefaultRefs: true }, 'defaultRef.json');
+  defaultRef = instantiate({ ajv, resolveDefaultRefs: true }, 'defaultRef.json').result;
   t.deepEqual(defaultRef, { prop: { innerProp1: 'text', innerProp2: 'text' } } as any);
+});
+
+test('Instantiate resolves allOf', t => {
+  const { result } = ins('allOfSchema.json');
+
+  t.deepEqual(result, {
+    innerProp: 'innerProp',
+    someProp: 'someProp',
+    otherProp: 'otherProp'
+  } as any);
 });
