@@ -108,6 +108,12 @@ function recursiveInstantiate(id: string, schema: Object, options: Options): Ins
         return res;
       }
 
+      if (resolveResult.result === null ||
+        typeof resolveResult.result !== 'object' ||
+        Array.isArray(resolveResult.result)) {
+        return resolveResult;
+      }
+
       return _.assign({}, res, {
         result: _.assign({}, res.result, resolveResult.result)
       });
@@ -155,7 +161,8 @@ function recursiveInstantiate(id: string, schema: Object, options: Options): Ins
       };
     // if integer, array, or string, return `default` value
     case 'array':
-      if (_.has(schema, 'minItems') && _.has(schema, 'items') && schema['minItems'] > 0) {
+      const itemsSchema = _.get(schema, 'items');
+      if (itemsSchema && _.has(schema, 'minItems') && schema['minItems'] > 0) {
         const defaultItemResult = recursiveInstantiate(id, schema['items'], options);
         if (defaultItemResult.hasResult) {
           return {
@@ -163,6 +170,28 @@ function recursiveInstantiate(id: string, schema: Object, options: Options): Ins
             result: Array.from(Array(schema['minItems'])).map(() => defaultItemResult.result)
           };
         }
+      }
+
+      if (itemsSchema && Array.isArray(itemsSchema)) {
+        return itemsSchema.reduce((arrayResult, s) => {
+          if (!arrayResult.hasResult) {
+            return arrayResult;
+          }
+
+          const itemResult = recursiveInstantiate(id, s, options);
+
+          if (itemResult.hasResult) {
+            return {
+              hasResult: true,
+              result: [...arrayResult.result, itemResult.result]
+            };
+          }
+
+          return {
+            hasResult: false,
+            error: itemResult.error
+          };
+        }, { hasResult: true, result: [] });
       }
 
       return {

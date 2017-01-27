@@ -472,3 +472,24 @@ test('Instantiate resolves allOf', t => {
     otherProp: 'otherProp'
   } as any);
 });
+
+test('Array items resolve correctly', t => {
+  ajv.addSchema({
+    id: 'array-items.json',
+    type: 'array',
+    items: [
+      {
+        type: 'string'
+      },
+      {
+        type: 'number'
+      },
+      {
+        type: 'boolean',
+        default: true
+      }
+    ]
+  });
+
+  t.deepEqual(ins('array-items.json').result, ['', 0, true] as any);
+});
