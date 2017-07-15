@@ -162,7 +162,7 @@ function recursiveInstantiate(id: string, schema: Object, options: Options): Ins
     // if integer, array, or string, return `default` value
     case 'array':
       const itemsSchema = _.get(schema, 'items');
-      if (itemsSchema && _.has(schema, 'minItems') && schema['minItems'] > 0) {
+      if (itemsSchema && !Array.isArray(itemsSchema) && _.has(schema, 'minItems') && schema['minItems'] > 0) {
         const defaultItemResult = recursiveInstantiate(id, schema['items'], options);
         if (defaultItemResult.hasResult) {
           return {
