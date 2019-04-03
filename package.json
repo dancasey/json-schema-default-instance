@@ -14,16 +14,19 @@
   ],
   "license": "PDDL-1.0",
   "dependencies": {
-    "lodash": "^4.13.1",
+    "lodash": "^4.17.11",
     "url": "^0.11.0"
   },
   "devDependencies": {
-    "ajv": "^4.10.3",
-    "@types/lodash": "^4.14.37",
+    "@types/lodash": "^4.14.123",
     "@types/node": "^6.0.46",
+    "ajv": "^6.10.0",
     "ava": "^0.16.0",
-    "tslint": "^3.14.0",
-    "typescript": "^2.0.0"
+    "prettier": "^1.16.4",
+    "tslint": "^5.15.0",
+    "tslint-config-prettier": "^1.18.0",
+    "tslint-react": "^4.0.0",
+    "typescript": "3.1.6"
   },
   "typings": "dist/instantiator.d.ts",
   "homepage": "https://github.com/dancasey/json-schema-default-instance#readme",

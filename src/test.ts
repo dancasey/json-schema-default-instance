@@ -1,14 +1,13 @@
 /* run with `npm test` */
 import instantiate, { normalizeSchemaRef } from './instantiator';
 import test from 'ava';
-import * as Ajv from 'ajv';
+import Ajv from 'ajv';
 
 const ajv = Ajv({ verbose: true });
 
 const definitionSchema = {
-  $schema: 'http://json-schema.org/draft-04/schema#',
   description: 'Definitions',
-  id: 'definitions.json',
+  $id: 'definitions.json',
   data: {
     description: 'Arbitrary data as hex string',
     type: 'string',
@@ -106,8 +105,7 @@ const definitionSchema = {
 };
 
 const externalSchema = {
-  $schema: 'http://json-schema.org/draft-04/schema#',
-  id: 'externalSchema.json',
+  $id: 'externalSchema.json',
   external: {
     $ref: 'definitions.json#/someObj'
   },
@@ -117,8 +115,7 @@ const externalSchema = {
 };
 
 const allOfSchema = {
-  $schema: 'http://json-schema.org/draft-04/schema#',
-  id: 'allOfSchema.json',
+  $id: 'allOfSchema.json',
   allOf: [{
     $ref: '#/definitions/innerObj'
   }, {
@@ -140,9 +137,8 @@ const allOfSchema = {
 }
 
 const messageSchema = {
-  $schema: 'http://json-schema.org/draft-04/schema#',
   description: 'Message',
-  id: 'message.json',
+  $id: 'message.json',
   type: 'object',
   required: [
     'header',
@@ -170,8 +166,7 @@ const messageSchema = {
 };
 
 const defaultRefSchema = {
-  $schema: 'http://json-schema.org/draft-04/schema#',
-  id: 'defaultRef.json',
+  $id: 'defaultRef.json',
   type: 'object',
   required: ['prop'],
   properties: {
@@ -201,8 +196,7 @@ const defaultRefSchema = {
 
 // example from https://spacetelescope.github.io/understanding-json-schema/structuring.html
 const internalSchema = {
-  $schema: 'http://json-schema.org/draft-04/schema#',
-  id: 'internalSchema',
+  $id: 'internalSchema',
   definitions: {
     address: {
       type: 'object',
@@ -223,7 +217,7 @@ const internalSchema = {
 };
 
 const resolveRefSchema = {
-  id: 'resolveRefSchema.json',
+  $id: 'resolveRefSchema.json',
   definitions: {
     first: {
       $ref: '#/definitions/second'
@@ -235,7 +229,7 @@ const resolveRefSchema = {
 }
 
 const invalidResolveRefSchema = {
-  id: 'invalidResolveRefSchema.json',
+  $id: 'invalidResolveRefSchema.json',
   $ref: '#/definitions/first',
   definitions: {
     first: {
@@ -248,7 +242,7 @@ const invalidResolveRefSchema = {
 }
 
 const literalValueSchema = {
-  id: 'literalValueSchema.json',
+  $id: 'literalValueSchema.json',
   type: 'object',
   properties: {
     array: { type: 'array' },
@@ -280,7 +274,7 @@ ajv.addSchema([
   literalValueSchema
 ]);
 
-let ins = instantiate({ ajv });
+const ins = instantiate({ ajv });
 
 test('Should normalize schema ref', t => {
   t.is(
@@ -332,7 +326,7 @@ test('Resolve external deep schema', t => {
 
 test('Resolve first enum value as default', t => {
   ajv.addSchema({
-    id: 'enumSchema.json',
+    $id: 'enumSchema.json',
     enum: ['one', 'two', 'three']
   });
 
@@ -341,7 +335,7 @@ test('Resolve first enum value as default', t => {
 
 test('Resolve const value as default', t => {
   ajv.addSchema({
-    id: 'constSchema.json',
+    $id: 'constSchema.json',
     const: 'constValue'
   });
 
@@ -350,7 +344,7 @@ test('Resolve const value as default', t => {
 
 test('Object defaults resolve correctly', t => {
   ajv.addSchema({
-    id: 'object-defaults.json',
+    $id: 'object-defaults.json',
     type: 'object',
     properties: {
       prop: {
@@ -367,7 +361,7 @@ test('Object defaults resolve correctly', t => {
 
 test('Object property defaults resolve correctly', t => {
   ajv.addSchema({
-    id: 'object-prop-defaults.json',
+    $id: 'object-prop-defaults.json',
     type: 'object',
     properties: {
       prop: {
@@ -382,7 +376,7 @@ test('Object property defaults resolve correctly', t => {
 
 test('Non-required external defaults resolve correctly', t => {
   ajv.addSchema({
-    id: 'non-req-ext-defaults.json',
+    $id: 'non-req-ext-defaults.json',
     type: 'object',
     properties: {
       prop: {
@@ -402,7 +396,7 @@ test('Non-required external defaults resolve correctly', t => {
 
 test('Required external defaults resolve correctly', t => {
   ajv.addSchema({
-    id: 'req-ext-defaults.json',
+    $id: 'req-ext-defaults.json',
     type: 'object',
     properties: {
       prop: {
@@ -423,7 +417,7 @@ test('Required external defaults resolve correctly', t => {
 
 test('Object default overrides property defaults', t => {
   ajv.addSchema({
-    id: 'override-defaults.json',
+    $id: 'override-defaults.json',
     type: 'object',
     properties: {
       prop1: {
@@ -475,7 +469,7 @@ test('Instantiate resolves allOf', t => {
 
 test('Array items resolve correctly', t => {
   ajv.addSchema({
-    id: 'array-items.json',
+    $id: 'array-items.json',
     type: 'array',
     items: [
       {

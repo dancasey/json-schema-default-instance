@@ -6,7 +6,8 @@
     "sourceMap": true,
     "outDir": "dist",
     "declaration": true,
-    "lib": ["dom", "es5", "scripthost", "es2015.iterable", "es2015.promise"]
+    "lib": ["dom", "es5", "scripthost", "es2015.iterable", "es2015.promise"],
+    "esModuleInterop": true
   },
   "files": [
     "src/instantiator.ts",
