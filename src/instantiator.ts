@@ -150,6 +150,11 @@ function recursiveInstantiate(
     );
   }
 
+  // if there's `oneOf`, resolve with first variant by default
+  if (has(schema, 'oneOf')) {
+    return recursiveInstantiate(id, schema['oneOf'][0], options);
+  }
+
   if (has(schema, 'const')) {
     return { hasResult: true, result: schema['const'] };
   }

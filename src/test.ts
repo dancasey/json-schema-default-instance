@@ -136,6 +136,35 @@ const allOfSchema = {
   }
 }
 
+const oneOfSchema = {
+  $id: 'oneOfSchema.json',
+  oneOf: [{
+    $ref: '#/definitions/one'
+  }, {
+    $ref: '#/definitions/two'
+  }],
+  definitions: {
+    one: {
+      type: 'object',
+      properties: {
+        a: {
+          enum: [1]
+        }
+      },
+      required: ['a']
+    },
+    two: {
+      type: 'object',
+      properties: {
+        b: {
+          enum: [1]
+        }
+      },
+      required: ['b']
+    }
+  }
+}
+
 const messageSchema = {
   description: 'Message',
   $id: 'message.json',
@@ -268,6 +297,7 @@ ajv.addSchema([
   internalSchema,
   defaultRefSchema,
   allOfSchema,
+  oneOfSchema,
   externalSchema,
   resolveRefSchema,
   invalidResolveRefSchema,
@@ -465,6 +495,12 @@ test('Instantiate resolves allOf', t => {
     someProp: 'someProp',
     otherProp: 'otherProp'
   } as any);
+});
+
+test('Instantiate resolves oneOf', t => {
+  const { result } = ins('oneOfSchema.json');
+
+  t.deepEqual(result, { a: 1 } as any);
 });
 
 test('Array items resolve correctly', t => {
