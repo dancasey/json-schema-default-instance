@@ -67,11 +67,15 @@ function resolveRef(
     return { hasResult: false, error: options.ajv.errors };
   }
 
-  const resolved = get(
-    validateFunction.schema,
-    path.filter(p => p !== undefined),
-    {}
-  );
+  const filteredPath = path.filter(p => p !== undefined);
+
+  const resolved = filteredPath.length > 0
+    ? get(
+      validateFunction.schema,
+      filteredPath,
+      {}
+    )
+    : validateFunction.schema;
   const result = merge({}, resolved, withoutRef);
 
   return recursiveInstantiate(schemaId, result, options);

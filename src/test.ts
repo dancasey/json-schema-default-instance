@@ -104,6 +104,29 @@ const definitionSchema = {
   }
 };
 
+const oneOfDefSchema = {
+  $id: 'oneOfDefSchema.json',
+  oneOf: [{
+    type: 'object',
+    properties: {
+      innerProp1: {
+        type: 'string',
+        default: 'innerProp'
+      }
+    },
+    required: ['innerProp1']
+  }, {
+    type: 'object',
+    properties: {
+      innerProp2: {
+        type: 'string',
+        default: 'innerProp'
+      }
+    },
+    required: ['innerProp2']
+  }]
+};
+
 const externalSchema = {
   $id: 'externalSchema.json',
   external: {
@@ -134,6 +157,13 @@ const allOfSchema = {
       }
     }
   }
+}
+
+const allOfOneOfSchema = {
+  $id: 'allOfOneOfSchema.json',
+  allOf: [{
+    $ref: 'oneOfDefSchema.json'
+  }]
 }
 
 const oneOfSchema = {
@@ -293,10 +323,12 @@ const defaultAddress = {
 
 ajv.addSchema([
   definitionSchema,
+  oneOfDefSchema,
   messageSchema,
   internalSchema,
   defaultRefSchema,
   allOfSchema,
+  allOfOneOfSchema,
   oneOfSchema,
   externalSchema,
   resolveRefSchema,
@@ -494,6 +526,14 @@ test('Instantiate resolves allOf', t => {
     innerProp: 'innerProp',
     someProp: 'someProp',
     otherProp: 'otherProp'
+  } as any);
+});
+
+test('Instantiate resolves allOf oneOf', t => {
+  const { result } = ins('allOfOneOfSchema.json');
+
+  t.deepEqual(result, {
+    innerProp1: 'innerProp'
   } as any);
 });
 
