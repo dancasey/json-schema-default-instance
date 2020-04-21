@@ -3,4 +3,5 @@ npm-debug.log*
 .npm
 .node_repl_history
 .vscode
-
+src
+typings

@@ -1,133 +1,378 @@
-import * as _ from 'lodash';
-import * as Ajv from 'ajv';
-import {resolve} from 'url';
 
-let ajv = Ajv({verbose: true});
+import has from 'lodash/has';
+import transform from 'lodash/transform';
+import isObject from 'lodash/isObject';
+import curry from 'lodash/curry';
+import merge from 'lodash/merge';
+import get from 'lodash/get';
+import omit from 'lodash/omit';
 
-/** Split a `$ref` into its relevant parts */
-const splitRef = /^(\w+.json)?(?:#)?\/?(\w+)\/?(\w+)?/;
+export interface Options {
+  ajv?: any;
+  resolveDefaultRefs?: boolean;
+}
 
-function deepMap(obj: any, iterator: Function) {
-  return _.transform(obj, (result, val: any, key) => {
+export interface Schema {
+  id?: string;
+  $id?: string;
+}
+
+export interface InstantiateResult {
+  hasResult: boolean;
+  result?: any;
+  error?: string;
+}
+
+const defaultOptions: Options = {
+  resolveDefaultRefs: false
+};
+
+type Iterator = (val: any, key: string | number, obj: object) => any;
+
+function deepMap(obj: any, iterator: Iterator) {
+  return transform(obj, (result, val: any, key) => {
     const newVal = iterator(val, key, obj);
-    result[key] = (_.isObject(val) && val === newVal) ?
-      deepMap(newVal, iterator) : newVal;
+    result[key] =
+      isObject(val) && val === newVal ? deepMap(newVal, iterator) : newVal;
   });
 }
 
-/**
- * Used to instantiate default objects from schemas.
- *
- * @param {Object|Object[]} schemata  JSON Schema or array of schemas to load and cache
- * @param {boolean} [onlyRequired=false] Whether to instantiate only those properties in the `required` array
- */
-export class Instantiator {
-  constructor(private schemata: Object | Object[], public requiredOnly = false, public resolveDefaultRefs = false) {
-    ajv.addSchema(schemata);
-  }
-
-  /**
-   * Creates an object as an instance of the given schema using its `default` properties.
-   *
-   * @param {string} id  The `id` of the object in `schema` to instantiate
-   * @return {Object} Instantiated default object
-   */
-  public instantiate(id: string): Object {
-    const schema = ajv.getSchema(id).schema;
-    if (!schema) {
-      return {};
-    }
-    return this.recursiveInstantiate(id, schema);
-  }
-
-  private resolveRef(id: string, schema: Object): any {
-    let withoutRef = _.omit(schema, '$ref');
-    // let [fullRef, first, second, third] = splitRef.exec(schema['$ref']);
-    let refs = splitRef.exec(schema['$ref']);
-    if (!refs) { return; }
-    let [, jsonRef = id, first, second] = refs;
-    // resolve up to three levels, e.g. `definitions.json#/section/item`, or `#/section/item`, or just `item`
-    jsonRef = resolve(id, jsonRef);
-    let validateFunction = ajv.getSchema(jsonRef);
-    if (!validateFunction) { return; }
-    let resolved = validateFunction.schema;
-    if (first && resolved) {
-      resolved = resolved[first];
-      if (second && resolved) {
-        resolved = resolved[second];
-      }
-    }
-    let result = _.merge({}, resolved, withoutRef);
-    return this.recursiveInstantiate(jsonRef, result);
-  }
-
-  private maybeResolveRefs(id: string, def: any): any {
-    if (!this.resolveDefaultRefs || !_.isObject(def)) {
-      return def;
-    }
-
-    let result = {};
-
-    if (_.has(def, '$ref')) {
-      result = this.resolveRef(id, def);
-      def = _.omit(def, '$ref');
-    }
-
-    const rest = deepMap(def, val => (_.has(val, '$ref') ? this.resolveRef(id, val) : val));
-
-    return _.merge({}, result, rest);
-  }
-
-  private recursiveInstantiate(id: string, schema: Object): any {
-    // if there's a `$ref`, `omit` ref part, resolve it, and merge into `withoutRef`
-    if (_.has(schema, '$ref')) {
-      return this.resolveRef(id, schema);
-    }
-
-    // if there's `type`, switch on it
-    if (_.has(schema, 'type')) {
-      switch (schema['type']) {
-        // if object, recurse into each property
-        case 'object':
-          let result = {};
-          let r: string[];
-
-          if (this.requiredOnly && _.has(schema, 'required')) {
-            r = schema['required'];
-            for (let i = 0; i < r.length; i++) {
-              let property = r[i];
-              result[property] = this.recursiveInstantiate(id, schema['properties'][property]);
-            }
-          } else if (!this.requiredOnly && _.has(schema, 'properties')) {
-            r = Object.keys(schema['properties']);
-            for (let i = 0; i < r.length; i++) {
-              let property = r[i];
-              result[property] = this.recursiveInstantiate(id, schema['properties'][property]);
-            }
-          }
-
-          if (_.has(schema, 'default')) {
-            result = _.merge({}, result, this.maybeResolveRefs(id, schema['default']));
-          }
-          return result;
-        // if integer, array, or string, return `default` value
-        case 'integer':
-        case 'array':
-        case 'string':
-          if (_.has(schema, 'default')) {
-            return this.maybeResolveRefs(id, schema['default']);
-          } else {
-            return null;
-          }
-        default:
-          return null;
-      }
-    }
-
-    // if there's `allOf`, `merge` each item in list into new object
-    if (_.has(schema, 'allOf')) {
-      let allOfMerged = _.assign({}, ...schema['allOf']);
-      return this.recursiveInstantiate(id, allOfMerged);
-    }
+function defaultLiteralValue(type: string): any {
+  switch (type) {
+    case 'array':
+      return [];
+    case 'string':
+      return '';
+    case 'integer':
+    case 'number':
+      return 0;
+    case 'boolean':
+      return false;
+    case 'null':
+      return null;
   }
 }
+
+function resolveRef(
+  id: string,
+  schema: object,
+  options: Options
+): InstantiateResult {
+  const withoutRef = omit(schema, '$ref');
+
+  const { schemaId = id, path } = parseRef(schema['$ref']);
+  const validateFunction = options.ajv.getSchema(schemaId);
+
+  if (!validateFunction) {
+    return { hasResult: false, error: options.ajv.errors };
+  }
+
+  const filteredPath = path.filter(p => p !== undefined);
+
+  const resolved = filteredPath.length > 0
+    ? get(
+      validateFunction.schema,
+      filteredPath,
+      {}
+    )
+    : validateFunction.schema;
+  const result = merge({}, resolved, withoutRef);
+
+  return recursiveInstantiate(schemaId, result, options);
+}
+
+function maybeResolveRefs(id: string, def: any, options: Options): any {
+  if (!options.resolveDefaultRefs || !isObject(def)) {
+    return def;
+  }
+
+  if (Array.isArray(def)) {
+    return def.map(val => maybeResolveRefs(id, val, options));
+  }
+
+  let result = {};
+
+  if (has(def, '$ref')) {
+    const { hasResult, result: resolveResult } = resolveRef(id, def, options);
+    def = omit(def, '$ref');
+    if (hasResult) {
+      result = resolveResult;
+    }
+  }
+
+  const rest = deepMap(def, val =>
+    has(val, '$ref') ? resolveRef(id, val, options).result : val
+  );
+
+  return merge({}, result, rest);
+}
+
+function recursiveInstantiate(
+  id: string,
+  schema: object,
+  options: Options
+): InstantiateResult {
+  if (has(schema, 'default')) {
+    return {
+      hasResult: true,
+      result: maybeResolveRefs(id, schema['default'], options)
+    };
+  }
+
+  if (has(schema, '$ref')) {
+    return resolveRef(id, schema, options);
+  }
+
+  // if there's `allOf`, `merge` each item in list into new object
+  if (has(schema, 'allOf')) {
+    return schema['allOf'].reduce(
+      (res, s, idx) => {
+        if (!res.hasResult) {
+          return res;
+        }
+
+        const resolveResult = recursiveInstantiate(id, s, options);
+
+        if (!resolveResult.hasResult) {
+          return res;
+        }
+
+        if (
+          resolveResult.result === null ||
+          typeof resolveResult.result !== 'object' ||
+          Array.isArray(resolveResult.result)
+        ) {
+          return resolveResult;
+        }
+
+        return {
+          ...res,
+          result: { ...res.result, ...resolveResult.result }
+        };
+      },
+      { hasResult: true, result: {} }
+    );
+  }
+
+  // if there's `oneOf`, resolve with first variant by default
+  if (has(schema, 'oneOf')) {
+    return recursiveInstantiate(id, schema['oneOf'][0], options);
+  }
+
+  if (has(schema, 'const')) {
+    return { hasResult: true, result: schema['const'] };
+  }
+
+  if (has(schema, 'enum')) {
+    return { hasResult: true, result: schema['enum'][0] };
+  }
+
+  switch (schema['type']) {
+    // if object, recurse into each property
+    case 'object':
+      const result = {};
+      let r: string[];
+
+      if (has(schema, 'properties')) {
+        r = Object.keys(schema['properties']);
+        for (const property of r) {
+          const hasDefault = has(schema, ['properties', property, 'default']);
+          const hasRequired =
+            has(schema, ['required']) &&
+            schema['required'].indexOf(property) !== -1;
+          if (hasDefault || hasRequired) {
+            const {
+              hasResult,
+              result: recursiveResult,
+              error
+            } = recursiveInstantiate(
+              id,
+              schema['properties'][property],
+              options
+            );
+            if (hasResult) {
+              result[property] = recursiveResult;
+            } else {
+              return {
+                hasResult,
+                error
+              };
+            }
+          }
+        }
+      }
+
+      return {
+        hasResult: true,
+        result
+      };
+    // if integer, array, or string, return `default` value
+    case 'array':
+      const itemsSchema = get(schema, 'items');
+      if (
+        itemsSchema &&
+        !Array.isArray(itemsSchema) &&
+        has(schema, 'minItems') &&
+        schema['minItems'] > 0
+      ) {
+        const defaultItemResult = recursiveInstantiate(
+          id,
+          schema['items'],
+          options
+        );
+        if (defaultItemResult.hasResult) {
+          return {
+            hasResult: true,
+            result: Array.from(Array(schema['minItems'])).map(
+              () => defaultItemResult.result
+            )
+          };
+        }
+      }
+
+      if (itemsSchema && Array.isArray(itemsSchema)) {
+        return itemsSchema.reduce(
+          (arrayResult, s) => {
+            if (!arrayResult.hasResult) {
+              return arrayResult;
+            }
+
+            const itemResult = recursiveInstantiate(id, s, options);
+
+            if (itemResult.hasResult) {
+              return {
+                hasResult: true,
+                result: [...arrayResult.result, itemResult.result]
+              };
+            }
+
+            return {
+              hasResult: false,
+              error: itemResult.error
+            };
+          },
+          { hasResult: true, result: [] }
+        );
+      }
+
+      return {
+        hasResult: true,
+        result: defaultLiteralValue(schema['type'])
+      };
+
+    case 'integer':
+    case 'number':
+    case 'string':
+    case 'boolean':
+    case 'null':
+      return {
+        hasResult: true,
+        result: defaultLiteralValue(schema['type'])
+      };
+    default:
+      return {
+        hasResult: false,
+        error: `Unknown type: ${schema['type']}`
+      };
+  }
+}
+
+function buildRef(baseSchemaId: string, schema: any, path: string[]): string {
+  const { schemaId } = parseRef(schema.$ref);
+
+  const refPath = path.length ? `/${path.join('/')}` : '';
+
+  return schemaId
+    ? `${schema.$ref}${refPath}`
+    : `${baseSchemaId}${schema.$ref}${refPath}`;
+}
+
+function schemaHasProperRef(schema: any, nextProp: string): boolean {
+  return has(schema, '$ref') && !has(schema, nextProp);
+}
+
+export function normalizeSchemaRef(
+  schemaRef: string,
+  options: Options
+): string {
+  const { schemaId = schemaRef, path } = parseRef(schemaRef);
+
+  const validateFunction = options.ajv.getSchema(schemaId);
+  if (!validateFunction) {
+    return schemaRef;
+  }
+  let schema = validateFunction.schema;
+
+  if (schemaHasProperRef(schema, path[0])) {
+    return normalizeSchemaRef(buildRef(schemaId, schema, path), options);
+  }
+
+  for (let i = 0; i < path.length; ++i) {
+    schema = schema[path[i]];
+    if (schemaHasProperRef(schema, path[i + 1])) {
+      return normalizeSchemaRef(
+        buildRef(schemaId, schema, path.slice(i + 1)),
+        options
+      );
+    }
+  }
+
+  return schemaRef;
+}
+
+interface ParseRefResult {
+  schemaId?: string;
+  path: string[];
+}
+
+function parsePath(refPath: string): string[] {
+  if (refPath.indexOf('/') === 0) {
+    refPath = refPath.substr(1);
+  }
+  return refPath
+    .split('/')
+    .map(prop => prop.replace('~0', '~').replace('~1', '/'));
+}
+
+function parseRef(schemaRef: string): ParseRefResult {
+  if (schemaRef.indexOf('#') !== -1) {
+    const [schemaId, path] = schemaRef.split('#');
+    return schemaId
+      ? { schemaId, path: parsePath(path) }
+      : { path: parsePath(path) };
+  } else if (schemaRef.indexOf('/') === 0) {
+    return { path: parsePath(schemaRef) };
+  } else {
+    return { schemaId: schemaRef, path: [] };
+  }
+}
+
+const instantiate = curry((
+  options: Options,
+  schemaRef: string
+): InstantiateResult => {
+  if (!options.ajv) {
+    return {
+      hasResult: false,
+      error: 'options.ajv is required'
+    };
+  }
+
+  options = merge({}, defaultOptions, options);
+
+  schemaRef = normalizeSchemaRef(schemaRef, options);
+
+  const validateFunction = options.ajv.getSchema(schemaRef);
+  if (!validateFunction) {
+    return {
+      hasResult: false,
+      error: `schema not found: ${schemaRef}`
+    };
+  }
+
+  const { schemaId } = parseRef(schemaRef);
+
+  return recursiveInstantiate(schemaId, validateFunction.schema, options);
+});
+
+export default instantiate;
