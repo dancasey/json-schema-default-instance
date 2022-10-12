@@ -1,3 +1,5 @@
+<table><tr></tr><tr><td><h3>🏚</h3></td><td><b>This package was moved to <a href="https://github.com/lukalabs/lukalabs-npm/tree/main/packages/json-schema-default-instance"><code>lukalabs-npm</code> monorepo</pre></a>. Please refer to that repository for the latest updates, issues and pull requests.</b></td></tr></table>
+
 # json-schema-default-instance
 
 [![Build Status](https://travis-ci.org/dancasey/json-schema-default-instance.svg?branch=master)](https://travis-ci.org/dancasey/json-schema-default-instance)
